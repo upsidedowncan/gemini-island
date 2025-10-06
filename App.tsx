@@ -539,11 +539,11 @@ const App: React.FC = () => {
         <h1 className="text-4xl font-bold text-teal-300">AI Civilization Game</h1>
         <p className="text-gray-400 mt-2">Observing an AI-driven island survival simulation.</p>
       </header>
-      <main className="grid grid-cols-1 lg:grid-cols-3 gap-8 flex-grow">
-        <div className="lg:col-span-2">
+      <main className="grid grid-cols-1 lg:grid-cols-5 gap-8 flex-grow">
+        <div className="lg:col-span-3">
             <IslandGrid map={map} survivors={survivors} mobs={mobs} chests={chests} selectedSurvivor={selectedSurvivor} time={time} />
         </div>
-        <div className="flex flex-col gap-8 h-[85vh] lg:h-auto">
+        <div className="lg:col-span-2 flex flex-col gap-8 h-[85vh] lg:h-auto">
             <div className="flex-1 min-h-0">
                 <SurvivorStatusPanel
                     survivors={survivors}

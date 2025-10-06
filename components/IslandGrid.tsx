@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { TileType, Survivor, Item, Mob, Chest } from '../types.ts';
 import { GRID_SIZE, TICK_RATE, TICKS_PER_DAY } from '../constants.ts';
@@ -131,6 +132,9 @@ const IslandGrid: React.FC<IslandGridProps> = ({ map, survivors, mobs, selectedS
                         )}
                     </div>
                     <SurvivorIcon className={`w-3/4 h-3/4 transition-transform duration-300 ${isSelected ? 'scale-125' : ''} ${getSurvivorColor(survivor.id)}`} />
+                    {(survivor.inventory[Item.WOODEN_SWORD] ?? 0) > 0 && (
+                        <SwordIcon className="absolute w-1/2 h-1/2 text-gray-300" style={{ transform: 'rotate(-45deg) translate(30%, -30%)' }}/>
+                    )}
                      {isSelected && <div className="absolute inset-0 bg-white/30 rounded-full animate-ping z-0"></div>}
                 </div>
               </div>

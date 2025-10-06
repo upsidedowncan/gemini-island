@@ -52,53 +52,57 @@ export const getSurvivorAction = async (gameState: Omit<GameState, 'log'>, survi
 
     const nearbyMobs = mobs.filter(m => Math.abs(m.position.x - survivor.position.x) < 5 && Math.abs(m.position.y - survivor.position.y) < 5);
 
-    const systemInstruction = `You are an AI survivor on a deserted island. Your personality is ${survivor.name}. Your goal is to survive, cooperate with others, build a shelter, and defend against dangers.
+    const systemInstruction = `You are an AI survivor on a deserted island named ${survivor.name}. Your goal is to survive by cooperating to build a shelter and fighting monsters.
 
-    **Current State:**
-    - Game Time: Day progress ${dayProgress}%. It is currently ${isNight ? 'NIGHT' : 'DAY'}.
-    - Your Status: Health=${survivor.stats.health}, Energy=${survivor.stats.energy}, Hunger=${survivor.stats.hunger}.
-    - Your Inventory: ${JSON.stringify(survivor.inventory) || 'Empty'}
-    - Your Current Action: ${survivor.action}
-    - Beds built by team: ${bedCount} out of ${survivors.length}.
+**Current State:**
+- Game Time: Day progress ${dayProgress}%. It is currently ${isNight ? 'NIGHT' : 'DAY'}.
+- Your Status: Health=${survivor.stats.health}, Energy=${survivor.stats.energy}, Hunger=${survivor.stats.hunger}.
+- Your Inventory: ${JSON.stringify(survivor.inventory) || 'Empty'}
+- Your Current Action: ${survivor.action}
 
-    **!! URGENT PRIORITIES !!**
-    1.  **SURVIVE THE NIGHT:** If it is NIGHT and mobs are nearby, your IMMEDIATE priority is to FIGHT them. A sword is best, but use your fists if you have to. Protect yourself and your teammates!
-    2.  **PREPARE FOR NIGHT:** As evening approaches (Day progress > 40%), you should prioritize crafting a Wooden Sword for defense.
-    
-    **Primary Goal: Build a safe, functional base.**
-    - Use Wooden Planks to build WOODEN_WALLs. Mobs cannot pass through walls. Boxing yourselves in is a valid strategy.
-    - Build a bed for every survivor. Resting on a bed is the only way to regain energy.
-    - Craft chests and PLACE them on wooden floors. They are essential for sharing resources.
+**!! IMMEDIATE THREATS (HIGHEST PRIORITY) !!**
+- **COMBAT:** If mobs are nearby at NIGHT, you MUST choose the 'FIGHTING' action. Work with others to defeat them. Your life depends on it.
+- **LOW STATS:** If your health is below 40, your top priority is to REST on a BED. If no beds exist, build one. If energy is below 20, REST on a BED.
 
-    **Cooperation is KEY:**
-    - Use the shared CHESTS to pool resources. Deposit materials you've gathered, and withdraw what you need for a task.
-    - Communicate with short, clear messages to coordinate. Announce plans ("I'll make swords for the night"), ask for materials ("need planks for a wall"), or call for help ("Mob at my position!").
-    - Pay attention to what others are doing to avoid redundant work.
+**!! STRATEGIC GOALS (IN ORDER OF IMPORTANCE) !!**
+1.  **DEFENSE PREPARATION (Priority when Day Progress > 40%):**
+    - Your #1 priority is to ensure you have a 'WOODEN_SWORD'. If you don't have one, craft one. Mobs are dangerous.
+2.  **COOPERATIVE BASE BUILDING:**
+    - The team's goal is to build a fortified base. Find where others have built 'WOODEN_FLOOR' or 'WOODEN_WALL' and contribute there. DO NOT build randomly alone.
+    - **Strategy:** Build a simple box of 'WOODEN_WALL's on a 'WOODEN_FLOOR' foundation. This is your safe zone.
+    - Once a shelter exists, place 'BED's and 'CHEST's inside.
+3.  **RESOURCE GATHERING:**
+    - Gather 'WOOD' from 'FOREST's to craft 'WOODEN_PLANK's.
+    - Deposit excess resources into shared 'CHEST's inside the base.
 
-    You must decide on your next action. Analyze the situation and choose wisely. Your response must be a JSON object matching the provided schema.`;
+**COOPERATION:**
+- Use short messages to coordinate. Announce plans ("Building west wall"), ask for materials ("need planks"), or call for help ("3 mobs on me!").
+- Pay attention to chat history and what others are doing.
+
+You must decide your next action. Your response must be a JSON object matching the provided schema.`;
 
     const contents = `
-    **Surroundings (relative to you):**
-    ${visibleTiles}
+**Team Status:**
+- Beds built: ${bedCount} out of ${survivors.length}.
+- Other Survivors:
+${otherSurvivors.map(s => `  - ${s.name} (${s.action}) at (${s.position.x - survivor.position.x}, ${s.position.y - survivor.position.y}) Inv: ${JSON.stringify(s.inventory)}`).join('\n')}
+- Shared Chests:
+${chests.length > 0 ? chests.map((c, i) => `  - Chest ${i} at (${c.position.x}, ${c.position.y}): ${JSON.stringify(c.inventory)}`).join('\n') : '  None'}
 
-    **Other Survivors:**
-    ${otherSurvivors.map(s => `- ${s.name} (${s.action}): Inv=${JSON.stringify(s.inventory)}`).join('\n')}
+**Environment:**
+- Your Surroundings (relative to you): ${visibleTiles}
+- Nearby Mobs (DANGER!):
+${nearbyMobs.length > 0 ? nearbyMobs.map(m => `  - Mob at (${m.position.x}, ${m.position.y}) with ${m.health} HP`).join('\n') : '  None'}
 
-    **Shared Chests:**
-    ${chests.length > 0 ? chests.map((c, i) => `Chest ${i} at (${c.position.x}, ${c.position.y}): ${JSON.stringify(c.inventory)}`).join('\n') : 'None'}
+**Communication Log:**
+${chatHistory.slice(-5).map(m => `- ${m.survivorName}: "${m.text}"`).join('\n') || '  No recent messages.'}
 
-    **Nearby Mobs (DANGER!):**
-    ${nearbyMobs.length > 0 ? nearbyMobs.map(m => `- Mob at (${m.position.x}, ${m.position.y}) with ${m.health} HP`).join('\n') : 'None'}
-
-    **Recent Chat History (for context):**
-    ${chatHistory.slice(-5).map(m => `${m.survivorName}: "${m.text}"`).join('\n')}
-
-    Based on all this information, what is your next action and why?
-    `;
+Based on all this information, what is your next action and why? Your response must be a JSON object.
+`;
 
     try {
         const response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
+            model: 'gemini-2.5-flash',
             contents: contents,
             config: {
                 systemInstruction: systemInstruction,
