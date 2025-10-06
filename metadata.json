@@ -1,0 +1,5 @@
+{
+  "name": "AI Civilization Game",
+  "description": "A real-time simulation game where you observe 5 AI-powered survivors stranded on an island. Watch them chop trees, build houses, interact, and try to survive, with their actions determined by the Gemini API.",
+  "requestFramePermissions": []
+}
