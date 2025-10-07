@@ -52,7 +52,8 @@ const SurvivorCard: React.FC<{ survivor: Survivor; isSelected: boolean; onSelect
   }
 
   const actionText = survivor.action.replace(/_/g, ' ').toLowerCase();
-  const inventoryItems = Object.entries(survivor.inventory).filter(([, count]) => count > 0);
+  // FIX: Added a type guard to ensure `count` is a number before comparing it.
+  const inventoryItems = Object.entries(survivor.inventory).filter(([, count]) => typeof count === 'number' && count > 0);
 
   return (
     <div onClick={onSelect} className={`p-4 rounded-lg bg-gray-800/70 border-2 cursor-pointer transition-all duration-300 ${isSelected ? `${getSurvivorColor(survivor.id)} shadow-lg scale-105` : 'border-transparent hover:border-gray-600'}`}>

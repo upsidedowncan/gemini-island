@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import IslandGrid from './components/IslandGrid.tsx';
 import SurvivorStatusPanel from './components/SurvivorStatusPanel.tsx';
@@ -28,7 +27,7 @@ const App: React.FC = () => {
 
   const initializeGame = useCallback(() => {
     const initialMap = generateMap();
-    for (let i = 0; i < GRID_SIZE * 2.5; i++) {
+    for (let i = 0; i < GRID_SIZE * 5; i++) {
         const x = Math.floor(Math.random() * GRID_SIZE);
         const y = Math.floor(Math.random() * GRID_SIZE);
         if (initialMap[y][x] === TileType.GRASS) {
@@ -86,6 +85,9 @@ const App: React.FC = () => {
         case 'RESTING': 
           const isOnBed = map[s.position.y]?.[s.position.x] === TileType.BED;
           energyChange = isOnBed ? 1.5 : 0;
+          if (isOnBed) {
+            newStats.health = Math.min(MAX_STAT, newStats.health + 0.5);
+          }
           break;
         case 'GATHERING_WOOD': energyChange -= 0.3; break;
         case 'BUILDING_FLOOR': energyChange -= 0.2; break;

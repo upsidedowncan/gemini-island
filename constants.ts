@@ -1,5 +1,4 @@
-
-export const GRID_SIZE = 20;
+export const GRID_SIZE = 40;
 export const MAX_STAT = 100;
 export const TICK_RATE = 500; // Game loop speed in ms
 
