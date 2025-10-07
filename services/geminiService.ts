@@ -61,22 +61,30 @@ export const getSurvivorAction = async (gameState: Omit<GameState, 'log'>, survi
 - Your Current Action: ${survivor.action}
 
 **!! IMMEDIATE THREATS (HIGHEST PRIORITY) !!**
-- **COMBAT:** If mobs are nearby at NIGHT, you MUST choose the 'FIGHTING' action. Work with others to defeat them. Your life depends on it.
-- **LOW STATS:** If your health is below 40, your top priority is to REST on a BED. If no beds exist, build one. If energy is below 20, REST on a BED.
+- **COMBAT:** If mobs are nearby (especially at NIGHT), you MUST choose the 'FIGHTING' action. Your life depends on it. If you have a sword, you will do more damage.
+- **LOW STATS:** If your health is below 40 or energy is below 20, your top priority is to REST on a BED. If no beds exist, you must work towards building one.
 
-**!! STRATEGIC GOALS (IN ORDER OF IMPORTANCE) !!**
-1.  **DEFENSE PREPARATION (Priority when Day Progress > 40%):**
-    - Your #1 priority is to ensure you have a 'WOODEN_SWORD'. If you don't have one, craft one. Mobs are dangerous.
-2.  **COOPERATIVE BASE BUILDING:**
-    - The team's goal is to build a fortified base. Find where others have built 'WOODEN_FLOOR' or 'WOODEN_WALL' and contribute there. DO NOT build randomly alone.
-    - **Strategy:** Build a simple box of 'WOODEN_WALL's on a 'WOODEN_FLOOR' foundation. This is your safe zone.
-    - Once a shelter exists, place 'BED's and 'CHEST's inside.
-3.  **RESOURCE GATHERING:**
-    - Gather 'WOOD' from 'FOREST's to craft 'WOODEN_PLANK's.
-    - Deposit excess resources into shared 'CHEST's inside the base.
+**!! SURVIVAL WORKFLOW (Follow this logical order) !!**
+
+1.  **GEAR UP FOR THE NIGHT (Priority when Day Progress > 40%):**
+    - The nights are dangerous. Your #1 priority before nightfall is to have a 'WOODEN_SWORD'.
+    - **IF** you do not have a sword, gather 'WOOD', craft 'WOODEN_PLANK's, and then craft a 'WOODEN_SWORD'.
+
+2.  **BUILD THE BASE (Use your planks!):**
+    - **IF** you have 'WOODEN_PLANK's in your inventory, your main task is to build.
+    - **COOPERATE:** Find the largest cluster of existing 'WOODEN_FLOOR' or 'WOODEN_WALL' tiles and build next to them. Do not build alone in a random spot.
+    - **BUILD ORDER:** First, expand the 'WOODEN_FLOOR' area. Then, build 'WOODEN_WALL's on the edges of the floor foundation to create a protective room.
+
+3.  **FURNISH THE BASE:**
+    - Once a basic room is built, craft and place 'BED's inside for healing and 'CHEST's for shared storage. You need enough beds for all survivors.
+
+4.  **GATHER RESOURCES (When you have no other tasks):**
+    - **IF** you have no sword to craft and no planks to build with, go to a 'FOREST' and 'GATHERING_WOOD'.
+    - After gathering wood, your next step should be to craft 'WOODEN_PLANK's.
+    - Deposit excess resources ('WOOD', 'WOODEN_PLANK's) into a 'CHEST' inside the base for your teammates.
 
 **COOPERATION:**
-- Use short messages to coordinate. Announce plans ("Building west wall"), ask for materials ("need planks"), or call for help ("3 mobs on me!").
+- Use short messages to coordinate. Announce plans ("Expanding the floor to the west"), ask for materials ("need planks for the wall"), or call for help ("3 mobs on me!").
 - Pay attention to chat history and what others are doing.
 
 You must decide your next action. Your response must be a JSON object matching the provided schema.`;
