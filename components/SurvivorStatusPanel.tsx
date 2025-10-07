@@ -1,7 +1,7 @@
 import React from 'react';
 import { Survivor, Item } from '../types.ts';
 import { MAX_STAT } from '../constants.ts';
-import { WoodIcon, PlankIcon, BedIcon, SwordIcon, ChestIcon } from './icons.tsx';
+import { WoodIcon, PlankIcon, BedIcon, SwordIcon, ChestIcon, StringIcon, FishingRodIcon, FishIcon } from './icons.tsx';
 
 interface SurvivorStatusPanelProps {
   survivors: Survivor[];
@@ -33,6 +33,9 @@ const ItemDisplay: React.FC<{item: Item, count: number}> = ({ item, count }) => 
             case Item.BED: return <BedIcon className="w-4 h-4" />;
             case Item.WOODEN_SWORD: return <SwordIcon className="w-4 h-4" />;
             case Item.CHEST_ITEM: return <ChestIcon className="w-4 h-4" />;
+            case Item.STRING: return <StringIcon className="w-4 h-4" />;
+            case Item.FISHING_ROD: return <FishingRodIcon className="w-4 h-4" />;
+            case Item.FISH: return <FishIcon className="w-4 h-4" />;
             default: return null;
         }
     }
@@ -60,6 +63,7 @@ const SurvivorCard: React.FC<{ survivor: Survivor; isSelected: boolean; onSelect
       <div className="flex justify-between items-start mb-3">
         <div className="flex items-center gap-2">
             <h3 className="text-lg font-bold">{survivor.name}</h3>
+            {(survivor.inventory[Item.WOODEN_SWORD] || 0) > 0 && <SwordIcon className="w-4 h-4 text-gray-300" />}
             {isThinking && <div className="w-2 h-2 bg-teal-400 rounded-full animate-pulse"></div>}
         </div>
         <div className="flex flex-wrap gap-2 justify-end max-w-[50%]">

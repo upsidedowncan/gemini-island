@@ -6,7 +6,7 @@ import { TICKS_PER_DAY } from "../constants.ts";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const availableActions: ActionType[] = ['IDLE', 'GATHERING_WOOD', 'BUILDING_FLOOR', 'BUILDING_WALL', 'PLACING_ITEM', 'CRAFTING', 'EXPLORING', 'RESTING', 'FIGHTING', 'DEPOSITING_ITEM', 'WITHDRAWING_ITEM'];
+const availableActions: ActionType[] = ['IDLE', 'GATHERING_WOOD', 'BUILDING_FLOOR', 'BUILDING_WALL', 'PLACING_ITEM', 'CRAFTING', 'EXPLORING', 'RESTING', 'FIGHTING', 'DEPOSITING_ITEM', 'WITHDRAWING_ITEM', 'GIVING_ITEM', 'FISHING', 'GATHERING_STRING'];
 const craftableItems = recipes.map(r => r.name);
 const placeableItems: Item[] = [Item.BED, Item.CHEST_ITEM];
 const allItems: Item[] = Object.values(Item);
@@ -21,6 +21,8 @@ const responseSchema = {
         itemToPlace: { type: Type.STRING, enum: placeableItems, description: "If action is 'PLACING_ITEM', specify which item from your inventory to place." },
         depositItem: { type: Type.STRING, enum: allItems, description: "If action is 'DEPOSITING_ITEM', specify which item to deposit into a chest." },
         withdrawItem: { type: Type.STRING, enum: allItems, description: "If action is 'WITHDRAWING_ITEM', specify which item to take from a chest." },
+        giveItem: { type: Type.STRING, enum: allItems, description: "If action is 'GIVING_ITEM', specify which item from your inventory to give." },
+        targetSurvivorName: { type: Type.STRING, description: "If action is 'GIVING_ITEM', specify the name of the survivor to give the item to." },
     },
     required: ['action', 'reasoning'],
 };
@@ -70,16 +72,18 @@ export const getSurvivorAction = async (gameState: Omit<GameState, 'log'>, survi
 **2. DAYTIME PREPARATION (Essential tasks during the day):**
    - **CRAFT A SWORD:** If you do not have a 'WOODEN_SWORD', this is your #1 priority during the DAY. Gather 'WOOD', craft 'WOODEN_PLANK's, and then craft the sword. You are useless in a night fight without one.
    - **REST & RECOVER:** If your energy is below 40, 'REST' on a 'BED' to recover. If no bed exists, perform low-energy tasks like crafting or managing inventory near the base until one is built.
+   - **GATHER FOOD:** Hunger is a slow killer. Your hunger will not recover without food. Get food by crafting a 'FISHING_ROD' (from 'WOOD' and 'STRING') and using the 'FISHING' action next to a water tile. Find 'STRING' by performing 'GATHERING_STRING' on 'SAND' tiles. Having 'FISH' in your inventory will be automatically consumed to restore hunger when needed.
 
 **3. STRATEGIC DEVELOPMENT (Coordinated group actions during the day):**
    - **BUILD A SHARED BASE:** The group MUST build ONE large, shared base. DO NOT build small, separate structures. Follow this exact plan:
      - **Step A: Foundation:** Create a large rectangular foundation of 'WOODEN_FLOOR' tiles (at least 6x6) on a clear 'GRASS' area.
      - **Step B: Walls:** Once a foundation of at least 25 tiles exists, build 'WOODEN_WALL's around its perimeter, leaving an opening for a door.
      - **Step C: Furnishings:** Once enclosed, the highest priority is to place 'BED's (one for each survivor). Then, place 'CHEST's for shared storage.
-   - **RESOURCE MANAGEMENT:**
+   - **RESOURCE MANAGEMENT & SHARING:**
      - Continuously gather 'WOOD' from 'FOREST's to supply building and crafting.
      - Craft 'WOODEN_PLANK's as they are the primary building material.
-     - Deposit excess materials ('WOOD', 'WOODEN_PLANK') into a shared 'CHEST' so others can build.
+     - Deposit excess materials into a shared 'CHEST' so others can build.
+     - **COOPERATE & SHARE:** Hoarding resources hurts the team. If another survivor is trying to craft an important item (like a bed or sword) and you have spare ingredients they lack, give it to them using the 'GIVING_ITEM' action. Check their inventory and recent messages to know what they need. This is a high-priority cooperative action.
 
 **4. LOW PRIORITY (Only if all above needs are met):**
    - If you have a sword, are healthy, it's daytime, and the base construction is well underway, you may 'EXPLORE' to find new resource patches.
@@ -89,8 +93,8 @@ export const getSurvivorAction = async (gameState: Omit<GameState, 'log'>, survi
 **COMMUNICATION RULES (VERY IMPORTANT):**
 - **MINIMIZE CHATTER.** Your messages clog the log and distract others.
 - **ONLY use the \`message\` field for critical, strategic communication.**
-- **GOOD Examples:** "I found a large forest at (x, y). Let's build our base there.", "I need 3 planks to craft a bed.", "Help! Mob is attacking me and my health is low!".
-- **BAD Examples:** "Getting wood.", "Crafting planks.", "Building a floor.", "Going to explore." These are routine. DO NOT announce them. Your actions are visible to others.
+- **GOOD Examples:** "I need 2 string to make a fishing rod, does anyone have extra?", "Help! Mob is attacking me and my health is low!".
+- **BAD Examples:** "Getting wood.", "Crafting planks.", "Going to fish." These are routine. DO NOT announce them. Your actions are visible to others.
 
 You must decide your next action based on this strict hierarchy. Your response must be a valid JSON object matching the schema.`;
 

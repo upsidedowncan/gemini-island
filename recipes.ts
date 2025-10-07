@@ -36,6 +36,15 @@ export const recipes: Recipe[] = [
             [Item.WOODEN_PLANK, null, Item.WOODEN_PLANK],
             [Item.WOODEN_PLANK, Item.WOODEN_PLANK, Item.WOODEN_PLANK],
         ],
+    },
+    {
+        name: 'Fishing Rod',
+        output: { item: Item.FISHING_ROD, quantity: 1 },
+        shape: [
+            [Item.WOOD, null, Item.STRING],
+            [Item.WOOD, Item.STRING, null],
+            [Item.WOOD, null, null],
+        ],
     }
 ];
 

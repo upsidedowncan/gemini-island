@@ -1,3 +1,4 @@
+import { string } from "@google/genai/dist/protos/protos";
 
 export enum TileType {
   WATER = 'WATER',
@@ -15,12 +16,15 @@ export enum Item {
     WOODEN_PLANK = 'WOODEN_PLANK',
     BED = 'BED',
     WOODEN_SWORD = 'WOODEN_SWORD',
-    CHEST_ITEM = 'CHEST_ITEM'
+    CHEST_ITEM = 'CHEST_ITEM',
+    STRING = 'STRING',
+    FISHING_ROD = 'FISHING_ROD',
+    FISH = 'FISH',
 }
 
 export type Inventory = Partial<Record<Item, number>>;
 
-export type ActionType = 'IDLE' | 'GATHERING_WOOD' | 'BUILDING_FLOOR' | 'BUILDING_WALL' | 'PLACING_ITEM' | 'CRAFTING' | 'EXPLORING' | 'RESTING' | 'FIGHTING' | 'DEPOSITING_ITEM' | 'WITHDRAWING_ITEM';
+export type ActionType = 'IDLE' | 'GATHERING_WOOD' | 'BUILDING_FLOOR' | 'BUILDING_WALL' | 'PLACING_ITEM' | 'CRAFTING' | 'EXPLORING' | 'RESTING' | 'FIGHTING' | 'DEPOSITING_ITEM' | 'WITHDRAWING_ITEM' | 'GIVING_ITEM' | 'FISHING' | 'GATHERING_STRING';
 
 export interface Survivor {
   id: string;
@@ -37,6 +41,7 @@ export interface Survivor {
   currentMessage?: { text: string; displayTicks: number; };
   craftingState?: { recipeName: string; progress: number; };
   actionTargetItem?: Item;
+  actionTargetSurvivorId?: string;
 }
 
 export interface Mob {

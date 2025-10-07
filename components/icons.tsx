@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 // FIX: Define a common props interface for icons to allow `style` and other props.
@@ -75,4 +74,23 @@ export const MobIcon = ({ className, style }: IconProps) => (
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className} style={style}>
     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM6 9a1 1 0 011-1h1a1 1 0 110 2H7a1 1 0 01-1-1zm6 0a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1zm-4 6a3 3 0 01-3-3h6a3 3 0 01-3 3z" clipRule="evenodd" />
   </svg>
+);
+
+export const StringIcon = ({ className, style }: IconProps) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className={className} style={style}>
+        <path d="M6 3c-3 3 1 9 5 9s8-6 5-9c-3-3-7 1-9 5s9 8 9 5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+);
+
+export const FishingRodIcon = ({ className, style }: IconProps) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.5" className={className} style={style}>
+        <path d="M17 3L3 17" />
+        <path d="M17 3l-6 10-4-2" />
+    </svg>
+);
+
+export const FishIcon = ({ className, style }: IconProps) => (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className={className} style={style}>
+         <path d="M10.22 1.05a.75.75 0 00-1.44-.02L4.01 6.52a.75.75 0 00-.22.53v5.9a.75.75 0 00.22.53l4.77 5.49a.75.75 0 001.44-.02l4.77-5.49a.75.75 0 00.22-.53v-5.9a.75.75 0 00-.22-.53L10.22 1.05z" />
+    </svg>
 );

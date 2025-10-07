@@ -8,7 +8,11 @@ export const CRAFTING_DURATION_TICKS = 10; // 5 seconds to craft an item
 
 // New Combat and Mob Constants
 export const MOB_SPAWN_CHANCE_NIGHT = 0.005;
-export const MOB_HEALTH = 50;
-export const MOB_ATTACK_DAMAGE = 5;
+export const MOB_HEALTH = 30;
+export const MOB_ATTACK_DAMAGE = 3;
 export const SURVIVOR_BASE_ATTACK_DAMAGE = 2;
 export const SWORD_ATTACK_DAMAGE = 10;
+
+// New constants for fishing/gathering
+export const STRING_FIND_CHANCE = 0.1; // Chance to find string per tick when gathering
+export const FISH_CATCH_CHANCE = 0.05; // Chance to catch fish per tick when fishing

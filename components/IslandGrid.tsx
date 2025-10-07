@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { TileType, Survivor, Item, Mob, Chest } from '../types.ts';
 import { GRID_SIZE, TICK_RATE, TICKS_PER_DAY } from '../constants.ts';
-import { TreeIcon, SurvivorIcon, BedIcon, PlankIcon, WoodIcon, ChestIcon, SwordIcon, MobIcon } from './icons.tsx';
+import { TreeIcon, SurvivorIcon, BedIcon, PlankIcon, WoodIcon, ChestIcon, SwordIcon, MobIcon, StringIcon, FishingRodIcon, FishIcon } from './icons.tsx';
 import { findRecipeByName } from '../recipes.ts';
 
 interface IslandGridProps {
@@ -38,6 +37,9 @@ const ItemIcon: React.FC<{ item: Item, className?: string}> = ({ item, className
         case Item.BED: return <BedIcon className={className} />;
         case Item.WOODEN_SWORD: return <SwordIcon className={className} />;
         case Item.CHEST_ITEM: return <ChestIcon className={className} />;
+        case Item.STRING: return <StringIcon className={className} />;
+        case Item.FISHING_ROD: return <FishingRodIcon className={className} />;
+        case Item.FISH: return <FishIcon className={className} />;
         default: return null;
     }
 }

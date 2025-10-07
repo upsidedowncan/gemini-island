@@ -4,7 +4,7 @@ import SurvivorStatusPanel from './components/SurvivorStatusPanel.tsx';
 import GameLog from './components/GameLog.tsx';
 import { generateMap } from './utils/mapGenerator.ts';
 import { TileType, Survivor, LogEntry, ChatMessage, Item, Inventory, Mob, Chest } from './types.ts';
-import { GRID_SIZE, MAX_STAT, TICK_RATE, TICKS_PER_DAY, TREE_REGROWTH_CHANCE, CRAFTING_DURATION_TICKS, MOB_SPAWN_CHANCE_NIGHT, MOB_HEALTH, MOB_ATTACK_DAMAGE, SURVIVOR_BASE_ATTACK_DAMAGE, SWORD_ATTACK_DAMAGE } from './constants.ts';
+import { GRID_SIZE, MAX_STAT, TICK_RATE, TICKS_PER_DAY, TREE_REGROWTH_CHANCE, CRAFTING_DURATION_TICKS, MOB_SPAWN_CHANCE_NIGHT, MOB_HEALTH, MOB_ATTACK_DAMAGE, SURVIVOR_BASE_ATTACK_DAMAGE, SWORD_ATTACK_DAMAGE, STRING_FIND_CHANCE, FISH_CATCH_CHANCE } from './constants.ts';
 import { getSurvivorAction } from './services/geminiService.ts';
 import { findRecipeByName } from './recipes.ts';
 
@@ -74,7 +74,14 @@ const App: React.FC = () => {
       if(s.stats.health <= 0) return s;
 
       const newStats = { ...s.stats };
+      const newInventory = {...s.inventory};
       newStats.hunger = Math.max(0, newStats.hunger - 0.1);
+
+      if (newStats.hunger < 70 && (newInventory[Item.FISH] || 0) > 0) {
+        newInventory[Item.FISH]!--;
+        newStats.hunger = Math.min(MAX_STAT, newStats.hunger + 30);
+        addLogEntry(`${s.name} ate a fish.`);
+      }
       
       let energyChange = -0.05;
       if (isNight && s.action !== 'RESTING') energyChange -= 0.1;
@@ -90,6 +97,8 @@ const App: React.FC = () => {
           }
           break;
         case 'GATHERING_WOOD': energyChange -= 0.3; break;
+        case 'GATHERING_STRING': energyChange -= 0.2; break;
+        case 'FISHING': energyChange -= 0.2; break;
         case 'BUILDING_FLOOR': energyChange -= 0.2; break;
         case 'BUILDING_WALL': energyChange -= 0.2; break;
         case 'PLACING_ITEM': energyChange -= 0.1; break;
@@ -106,9 +115,9 @@ const App: React.FC = () => {
         if (newMsg.displayTicks <= 0) newMsg = undefined;
       }
 
-      return { ...s, stats: newStats, currentMessage: newMsg };
+      return { ...s, stats: newStats, inventory: newInventory, currentMessage: newMsg };
     }).filter(s => s.stats.health > 0));
-  }, [time, map]);
+  }, [time, map, addLogEntry]);
   
   const isPassable = (pos: { x: number, y: number }, grid: TileType[][]) => {
       const tile = grid[pos.y]?.[pos.x];
@@ -240,6 +249,48 @@ const App: React.FC = () => {
                 if (nearestForest) newSurvivor.position = moveTowards(s.position, nearestForest, newMap);
               }
               break;
+            case 'GATHERING_STRING':
+                if (newMap[s.position.y][s.position.x] === TileType.SAND) {
+                    if (Math.random() < STRING_FIND_CHANCE) {
+                        newSurvivor.inventory[Item.STRING] = (newSurvivor.inventory[Item.STRING] || 0) + 1;
+                        addLogEntry(`${s.name} found some string.`);
+                    }
+                } else {
+                    const nearestSand = findNearestTile(s.position, TileType.SAND, newMap);
+                    if (nearestSand) newSurvivor.position = moveTowards(s.position, nearestSand, newMap);
+                }
+                break;
+            case 'FISHING':
+                if ((newSurvivor.inventory[Item.FISHING_ROD] || 0) > 0) {
+                    const isAdjacentToWater = [[0,1],[0,-1],[1,0],[-1,0]].some(([dx,dy]) => newMap[s.position.y+dy]?.[s.position.x+dx] === TileType.WATER);
+                    if (isAdjacentToWater) {
+                        if (Math.random() < FISH_CATCH_CHANCE) {
+                            newSurvivor.inventory[Item.FISH] = (newSurvivor.inventory[Item.FISH] || 0) + 1;
+                            addLogEntry(`${s.name} caught a fish!`);
+                        }
+                    } else {
+                        let nearestFishingSpot: {x:number, y:number} | null = null;
+                        let minDistance = Infinity;
+                        for (let y=0; y<GRID_SIZE; y++) {
+                            for (let x=0; x<GRID_SIZE; x++) {
+                                if (isPassable({x, y}, newMap)) {
+                                    const isAdjToWater = [[0,1],[0,-1],[1,0],[-1,0]].some(([dx,dy]) => newMap[y+dy]?.[x+dx] === TileType.WATER);
+                                    if (isAdjToWater) {
+                                        const distance = Math.abs(x - s.position.x) + Math.abs(y - s.position.y);
+                                        if (distance < minDistance) {
+                                            minDistance = distance;
+                                            nearestFishingSpot = {x, y};
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (nearestFishingSpot) newSurvivor.position = moveTowards(s.position, nearestFishingSpot, newMap);
+                    }
+                } else {
+                    newSurvivor.action = 'IDLE';
+                }
+                break;
             case 'CRAFTING':
                 if (newSurvivor.craftingState) {
                     newSurvivor.craftingState.progress += 1;
@@ -318,6 +369,14 @@ const App: React.FC = () => {
                 }
               } else { newSurvivor.action = 'IDLE'; }
               break;
+             case 'GIVING_ITEM':
+                const targetSurvivor = currentSurvivors.find(sur => sur.id === newSurvivor.actionTargetSurvivorId);
+                if (targetSurvivor) {
+                    newSurvivor.position = moveTowards(s.position, targetSurvivor.position, newMap);
+                } else {
+                    newSurvivor.action = 'IDLE';
+                }
+                break;
             case 'DEPOSITING_ITEM':
               const depositItem = newSurvivor.actionTargetItem;
               if (depositItem && (newSurvivor.inventory[depositItem] || 0) > 0) {
@@ -398,6 +457,34 @@ const App: React.FC = () => {
     });
   }, [addLogEntry]);
 
+   const resolveInteractions = useCallback(() => {
+        setSurvivors(currentSurvivors => {
+            let newSurvivors = currentSurvivors.map(s => ({ ...s, inventory: {...s.inventory} }));
+            const givers = newSurvivors.filter(s => s.action === 'GIVING_ITEM');
+
+            for (const giver of givers) {
+                const targetSurvivor = newSurvivors.find(s => s.id === giver.actionTargetSurvivorId);
+                const itemToGive = giver.actionTargetItem;
+
+                if (targetSurvivor && itemToGive && (giver.inventory[itemToGive] || 0) > 0) {
+                    const distance = Math.abs(targetSurvivor.position.x - giver.position.x) + Math.abs(targetSurvivor.position.y - giver.position.y);
+                    if (distance <= 1) {
+                        giver.inventory[itemToGive]!--;
+                        if (giver.inventory[itemToGive] === 0) delete giver.inventory[itemToGive];
+                        
+                        targetSurvivor.inventory[itemToGive] = (targetSurvivor.inventory[itemToGive] || 0) + 1;
+                        
+                        addLogEntry(`${giver.name} gave ${itemToGive.replace(/_/g, ' ').toLowerCase()} to ${targetSurvivor.name}.`);
+                        giver.action = 'IDLE';
+                        giver.actionTargetItem = undefined;
+                        giver.actionTargetSurvivorId = undefined;
+                    }
+                }
+            }
+            return newSurvivors;
+        });
+    }, [addLogEntry]);
+
   // Main Game Loop
   useEffect(() => {
     const gameLoop = () => {
@@ -409,6 +496,7 @@ const App: React.FC = () => {
         executeMobActions();
         executeSurvivorActions();
         resolveCombat();
+        resolveInteractions();
 
         setSurvivors(currentSurvivors => {
             const currentThinkingId = thinkingSurvivorId;
@@ -473,7 +561,7 @@ const App: React.FC = () => {
 
     const intervalId = setInterval(gameLoop, TICK_RATE);
     return () => clearInterval(intervalId);
-  }, [time, mobs, thinkingSurvivorId, map, updateSurvivorState, executeMobActions, executeSurvivorActions, resolveCombat]);
+  }, [time, mobs, thinkingSurvivorId, map, updateSurvivorState, executeMobActions, executeSurvivorActions, resolveCombat, resolveInteractions]);
 
   // AI Decision Trigger
   useEffect(() => {
@@ -483,17 +571,27 @@ const App: React.FC = () => {
             const gameState = { survivors, map, time, chatHistory, mobs, chests };
             getSurvivorAction(gameState, survivor).then(newActionData => {
                 if (newActionData) {
-                    const { action, reasoning, message, craftingRecipeName, itemToPlace, depositItem, withdrawItem } = newActionData;
+                    const { action, reasoning, message, craftingRecipeName, itemToPlace, depositItem, withdrawItem, giveItem, targetSurvivorName } = newActionData;
                     
                     setSurvivors(prev => prev.map(s => {
                         if (s.id === survivor.id) {
-                            let newSurvivorState = { ...s, action: action, lastDecisionTick: gameTickRef.current, actionTargetItem: itemToPlace || depositItem || withdrawItem, currentMessage: s.currentMessage };
+                            let newSurvivorState: Survivor = { ...s, action: action, lastDecisionTick: gameTickRef.current };
+                            newSurvivorState.actionTargetItem = itemToPlace || depositItem || withdrawItem || giveItem;
                             
                             addLogEntry(`${s.name} decided to ${action.toLowerCase().replace(/_/g, ' ')}. Reason: ${reasoning}`);
                             
                             if (message) {
                                 newSurvivorState.currentMessage = { text: message, displayTicks: 20 }; // show for 10s
-                                setChatHistory(prev => [...prev.slice(-20), { survivorName: s.name, text: message }]);
+                                setChatHistory(prevChat => [...prevChat.slice(-20), { survivorName: s.name, text: message }]);
+                            }
+
+                            if (action === 'GIVING_ITEM' && targetSurvivorName && giveItem) {
+                                const target = prev.find(sur => sur.name === targetSurvivorName);
+                                if (target) {
+                                    newSurvivorState.actionTargetSurvivorId = target.id;
+                                } else {
+                                    newSurvivorState.action = 'IDLE'; // Target not found
+                                }
                             }
                             
                             if (action === 'CRAFTING' && craftingRecipeName) {
