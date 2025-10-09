@@ -92,7 +92,7 @@ const App: React.FC = () => {
       switch(s.action) {
         case 'RESTING': 
           const isOnBed = map[s.position.y]?.[s.position.x] === TileType.BED;
-          energyChange = isOnBed ? 1.5 : 0;
+          energyChange = isOnBed ? 1.5 : 0.5; // Rest on floor is better than nothing
           if (isOnBed) {
             newStats.health = Math.min(MAX_STAT, newStats.health + 0.5);
           }
@@ -358,7 +358,6 @@ const App: React.FC = () => {
               if (newMap[s.position.y][s.position.x] !== TileType.BED) {
                 const nearestBed = findNearestTile(s.position, TileType.BED, newMap);
                 if (nearestBed) newSurvivor.position = moveTowards(s.position, nearestBed, newMap);
-                else newSurvivor.action = 'IDLE';
               }
               break;
             case 'FIGHTING':
@@ -486,6 +485,29 @@ const App: React.FC = () => {
         });
     }, [addLogEntry]);
 
+  const calculateBaseCampPosition = useCallback((): { x: number, y: number } | null => {
+    const builtTiles: { x: number, y: number }[] = [];
+    const baseTileTypes = [TileType.WOODEN_FLOOR, TileType.WOODEN_WALL, TileType.BED, TileType.CHEST];
+    
+    map.forEach((row, y) => {
+        row.forEach((tile, x) => {
+            if (baseTileTypes.includes(tile)) {
+                builtTiles.push({ x, y });
+            }
+        });
+    });
+
+    if (builtTiles.length === 0) {
+        return null;
+    }
+
+    const sum = builtTiles.reduce((acc, pos) => ({ x: acc.x + pos.x, y: acc.y + pos.y }), { x: 0, y: 0 });
+    return {
+        x: Math.round(sum.x / builtTiles.length),
+        y: Math.round(sum.y / builtTiles.length),
+    };
+  }, [map]);
+
   // Main Game Loop
   useEffect(() => {
     const gameLoop = () => {
@@ -570,7 +592,9 @@ const App: React.FC = () => {
         const survivor = survivors.find(s => s.id === thinkingSurvivorId);
         if (survivor) {
             const gameState = { survivors, map, time, chatHistory, mobs, chests };
-            getSurvivorAction(gameState, survivor).then(newActionData => {
+            const baseCampPosition = calculateBaseCampPosition();
+
+            getSurvivorAction(gameState, survivor, baseCampPosition).then(newActionData => {
                 if (newActionData) {
                     const { action, reasoning, message, craftingRecipeName, itemToPlace, depositItem, withdrawItem, giveItem, targetSurvivorName, shortTermGoal } = newActionData;
                     
@@ -632,7 +656,7 @@ const App: React.FC = () => {
             setThinkingSurvivorId(null);
         }
     }
-  }, [thinkingSurvivorId, survivors, map, time, chatHistory, addLogEntry, mobs, chests]);
+  }, [thinkingSurvivorId, survivors, map, time, chatHistory, addLogEntry, mobs, chests, calculateBaseCampPosition]);
 
   return (
     <div className="bg-gray-900 text-white min-h-screen p-4 lg:p-8 flex flex-col gap-8">

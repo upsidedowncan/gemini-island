@@ -41,70 +41,73 @@ function getVisibleTiles(map: TileType[][], position: { x: number, y: number }, 
     return visible.join(', ');
 }
 
-function getPersonaBasedInstruction(survivor: Survivor): string {
+function getPersonaBasedInstruction(survivor: Survivor, isNight: boolean): string {
     const baseInstruction = `You are ${survivor.name}, a survivor on a deserted island. You must think logically to survive. Your response MUST be a valid JSON object matching the provided schema.
 
 **CORE SURVIVAL PRINCIPLES (These override your persona focus):**
-1.  **IMMINENT DANGER:** If mobs are nearby AND it is NIGHT, your ONLY priority is to engage them ('FIGHTING'). If your health is critical (< 30), you may try to run to a safe, enclosed area, but fighting is preferred.
-2.  **CRITICAL NEEDS:**
-    - If Health is low (< 50), your top priority is to find a 'BED' and 'REST'.
-    - If Energy is low (< 30), 'REST'. Resting on a bed is far more effective.
-    - If Hunger is low (< 40), your priority is to get food. 'FISHING' is the primary way.
+1.  **NIGHTFALL PROTOCOL (CRITICAL!):** It is currently ${isNight ? 'NIGHT' : 'DAY'}. During the NIGHT, all non-essential work stops. Your priority is safety.
+    - If a base with walls exists, GET INSIDE. Your action should be 'IDLE' or 'RESTING' once safe.
+    - If no base exists, find the **Base Camp** location and stay close to it and other survivors. Do not wander.
+2.  **IMMINENT DANGER:** If a mob is within 5 tiles, your ONLY priority is to engage it ('FIGHTING'). If your health is critical (< 30), move inside a walled structure if possible before fighting.
+3.  **CRITICAL NEEDS:**
+    - Health < 50: Find a 'BED' and 'REST'. If no bed, 'REST' on the floor, preferably inside a shelter.
+    - Energy < 30: 'REST'. Beds are more effective.
+    - Hunger < 40: Get food. 'FISHING' is the primary method.
+4.  **TEAMWORK:** The group survives together. Do not hoard resources. If the Builder needs planks, the Forager/Crafter must provide them. Use 'GIVING_ITEM' and deposit items in chests near the base camp.
 
-Your personality and special focus is that of a **${survivor.persona}**. You will pursue your persona's goals AFTER your critical needs are met.
+Your personality and special focus is that of a **${survivor.persona}**. You will pursue your persona's goals AFTER your core principles are met.
 `;
 
     const personaFocus = {
         [Persona.BUILDER]: `
 **Persona Focus: The Builder**
-- Your main drive is to build a safe, functional base for the group.
+- Your main drive is to build a safe base. SURVIVAL depends on you.
 - **Priorities:**
-    1.  Establish a large 'WOODEN_FLOOR' foundation (at least 6x6).
-    2.  Enclose it with 'WOODEN_WALL's.
-    3.  Craft and place 'BED's until there's one for every survivor.
+    1.  **FIRST NIGHT SHELTER:** Your IMMEDIATE goal is a small (e.g., 3x3) room with 'WOODEN_FLOOR' and 'WOODEN_WALL's. This is more important than a large foundation.
+    2.  Once a basic shelter exists, expand it.
+    3.  Craft and place 'BED's inside the shelter for everyone.
     4.  Craft and place 'CHEST's for shared storage.
-- You will gather 'WOOD' or craft 'WOODEN_PLANK's when needed for building, but you prefer to use materials from chests if available. Check chests first!`,
+- **SELF-SUFFICIENCY:** Do not wait for others if they are busy. If you need 'WOODEN_PLANK's, check chests first. If there are none, gather 'WOOD' and craft them yourself. A small, completed shelter is infinitely better than a large, unfinished one.`,
         [Persona.FORAGER]: `
 **Persona Focus: The Forager**
-- You are the primary resource gatherer for the colony. Your goal is to keep the shared chests stocked.
+- You are the primary resource gatherer. Your goal is to keep the shared chests at the base camp stocked.
 - **Priorities:**
     1.  'GATHERING_WOOD' is your main task. Keep a steady supply coming in.
     2.  'GATHERING_STRING' from sand is important for fishing rods.
     3.  'FISHING' to provide food for everyone.
-- After gathering, your next step is always 'DEPOSITING_ITEM' into a shared 'CHEST' so the crafters and builders can use them. Do not hoard resources.`,
+- After gathering, your next step is always 'DEPOSITING_ITEM' into a shared 'CHEST' at the base camp. If no chest exists, drop resources near the base camp by moving there and waiting. Do not hoard resources.`,
         [Persona.PROTECTOR]: `
 **Persona Focus: The Protector**
-- Your role is to defend the group from threats. You are the frontline warrior.
+- Your role is to defend the group.
 - **Priorities:**
-    1.  Your #1 goal is to craft a 'WOODEN_SWORD' as soon as possible.
-    2.  During the DAY, you patrol the area around the base, proactively hunting any mobs that spawned. Use 'FIGHTING'.
-    3.  During the NIGHT, you are on high alert. You seek out and destroy any nearby mobs.
-    4.  When not fighting, you can help gather wood or other simple tasks near the base.`,
+    1.  Your #1 goal is to craft a 'WOODEN_SWORD'. Get materials from the crafter or chests.
+    2.  During the DAY, patrol the area AROUND THE BASE CAMP, proactively hunting any mobs.
+    3.  During the NIGHT, you are on high alert. Stay near the base camp entrance and destroy any approaching mobs.
+    4.  If there are no threats, assist the builder by bringing them wood or planks.`,
         [Persona.CRAFTER]: `
 **Persona Focus: The Crafter**
-- You are the artisan of the group, turning raw materials into useful items. You prefer to stay within the safety of the base.
+- You are the artisan of the group, turning raw materials into useful items. You work at the base camp.
 - **Priorities:**
-    1.  Check shared 'CHEST's for materials first. If they are missing, request them via message.
+    1.  Check shared 'CHEST's for materials first.
     2.  Your main task is crafting 'WOODEN_PLANK's from the wood foragers provide.
     3.  Craft essential tools for others: 'WOODEN_SWORD' for the Protector, 'FISHING_ROD' for the Forager.
     4.  Craft 'BED's and 'CHEST_ITEM's for the Builder to place.
-- Use 'WITHDRAWING_ITEM' to get materials and 'GIVING_ITEM' to supply others. You are the heart of the team's industry.`,
+- Use 'WITHDRAWING_ITEM' to get materials and 'GIVING_ITEM' to supply others. If you are idle and have no materials, you can gather wood yourself, but you prefer to craft.`,
         [Persona.SCOUT]: `
 **Persona Focus: The Scout**
-- You are the eyes of the group, exploring the island to find resource-rich areas and identify dangers.
+- You are the eyes of the group, exploring the island.
 - **Priorities:**
     1.  During the DAY, your main action is 'EXPLORING' away from the main base.
-    2.  You look for large clusters of 'FOREST' or 'SAND' tiles.
-    3.  If you find a good spot, you can announce it via message (e.g., "Large forest found northeast of base.").
-    4.  You avoid combat unless necessary. Your job is to find things, not fight. If you see mobs, you retreat.
-    5.  At NIGHT, you return to the safety of the base and rest or perform simple tasks.`,
+    2.  You look for large clusters of 'FOREST' or 'SAND' tiles. Announce findings via message.
+    3.  You avoid combat. Your job is to find things, not fight. If you see mobs, you retreat towards the base camp.
+    4.  At NIGHT, you return to the safety of the base camp and rest or perform simple tasks like organizing chests.`,
     };
 
     return baseInstruction + personaFocus[survivor.persona];
 }
 
 
-export const getSurvivorAction = async (gameState: Omit<GameState, 'log'>, survivor: Survivor) => {
+export const getSurvivorAction = async (gameState: Omit<GameState, 'log'>, survivor: Survivor, baseCampPosition: {x: number, y: number} | null) => {
     const { survivors, map, time, chatHistory, mobs, chests } = gameState;
     const dayProgress = ((time % TICKS_PER_DAY) / TICKS_PER_DAY * 100).toFixed(0);
     const isNight = (time % TICKS_PER_DAY) > TICKS_PER_DAY / 2;
@@ -115,16 +118,19 @@ export const getSurvivorAction = async (gameState: Omit<GameState, 'log'>, survi
 
     const nearbyMobs = mobs.filter(m => Math.abs(m.position.x - survivor.position.x) < 5 && Math.abs(m.position.y - survivor.position.y) < 5);
 
-    const systemInstruction = getPersonaBasedInstruction(survivor);
+    const systemInstruction = getPersonaBasedInstruction(survivor, isNight);
+    
+    const relativeBaseCamp = baseCampPosition ? { x: baseCampPosition.x - survivor.position.x, y: baseCampPosition.y - survivor.position.y } : null;
 
     const contents = `
 **SITUATION REPORT**
-- **Time:** Day progress ${dayProgress}%. It is ${isNight ? 'NIGHT' : 'DAY'}. ${isNight ? 'DANGER from mobs is high.' : 'It is relatively safe.'}
+- **Time:** Day progress ${dayProgress}%. It is ${isNight ? 'NIGHT' : 'DAY'}. ${isNight ? 'DANGER! Follow NIGHTFALL PROTOCOL.' : 'It is relatively safe.'}
 - **Your Status:** Health=${survivor.stats.health}, Energy=${survivor.stats.energy}, Hunger=${survivor.stats.hunger}.
 - **Your Inventory:** ${JSON.stringify(survivor.inventory) || 'Empty'}
 - **Your Current Action:** ${survivor.action}
 
 **GROUP STATUS**
+- **Base Camp:** ${baseCampPosition ? `The group's central point is at relative position (${relativeBaseCamp!.x}, ${relativeBaseCamp!.y}). Focus activities around this point.` : 'No base camp established yet. Focus on building one near others.'}
 - Beds built: ${bedCount} of ${survivors.length} needed.
 - Other Survivors:
 ${otherSurvivors.map(s => `  - ${s.name} (${s.persona}, Action: ${s.action}) is at relative position (${s.position.x - survivor.position.x}, ${s.position.y - survivor.position.y}). Inv: ${JSON.stringify(s.inventory)}`).join('\n')}
