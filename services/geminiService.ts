@@ -1,6 +1,5 @@
 import { GoogleGenAI, Type } from "@google/genai";
-// Fix: GameState is now properly defined and imported, resolving the module error.
-import { GameState, ActionType, Survivor, Item, TileType, Mob, Chest } from '../types.ts';
+import { GameState, ActionType, Survivor, Item, TileType, Mob, Chest, Persona } from '../types.ts';
 import { recipes } from '../recipes.ts';
 import { TICKS_PER_DAY } from "../constants.ts";
 
@@ -14,9 +13,10 @@ const allItems: Item[] = Object.values(Item);
 const responseSchema = {
     type: Type.OBJECT,
     properties: {
+        shortTermGoal: { type: Type.STRING, description: 'A concise description of your immediate objective. What are you trying to accomplish right now?' },
         action: { type: Type.STRING, enum: availableActions },
-        reasoning: { type: Type.STRING, description: 'A brief explanation for your chosen action from your perspective.' },
-        message: { type: Type.STRING, description: 'An optional, short message to coordinate, ask for help, or announce progress. Leave blank for routine actions.' },
+        reasoning: { type: Type.STRING, description: 'A brief explanation for your chosen action and how it achieves your shortTermGoal.' },
+        message: { type: Type.STRING, description: 'An optional, short message for CRITICAL coordination. E.g., asking for help/items, warning about mobs. Do not announce routine actions.' },
         craftingRecipeName: { type: Type.STRING, enum: craftableItems, description: "If action is 'CRAFTING', specify the recipe name." },
         itemToPlace: { type: Type.STRING, enum: placeableItems, description: "If action is 'PLACING_ITEM', specify which item from your inventory to place." },
         depositItem: { type: Type.STRING, enum: allItems, description: "If action is 'DEPOSITING_ITEM', specify which item to deposit into a chest." },
@@ -24,7 +24,7 @@ const responseSchema = {
         giveItem: { type: Type.STRING, enum: allItems, description: "If action is 'GIVING_ITEM', specify which item from your inventory to give." },
         targetSurvivorName: { type: Type.STRING, description: "If action is 'GIVING_ITEM', specify the name of the survivor to give the item to." },
     },
-    required: ['action', 'reasoning'],
+    required: ['shortTermGoal', 'action', 'reasoning'],
 };
 
 function getVisibleTiles(map: TileType[][], position: { x: number, y: number }, radius: number) {
@@ -41,7 +41,69 @@ function getVisibleTiles(map: TileType[][], position: { x: number, y: number }, 
     return visible.join(', ');
 }
 
-// Fix: Simplified and corrected the type for the gameState parameter to improve type safety.
+function getPersonaBasedInstruction(survivor: Survivor): string {
+    const baseInstruction = `You are ${survivor.name}, a survivor on a deserted island. You must think logically to survive. Your response MUST be a valid JSON object matching the provided schema.
+
+**CORE SURVIVAL PRINCIPLES (These override your persona focus):**
+1.  **IMMINENT DANGER:** If mobs are nearby AND it is NIGHT, your ONLY priority is to engage them ('FIGHTING'). If your health is critical (< 30), you may try to run to a safe, enclosed area, but fighting is preferred.
+2.  **CRITICAL NEEDS:**
+    - If Health is low (< 50), your top priority is to find a 'BED' and 'REST'.
+    - If Energy is low (< 30), 'REST'. Resting on a bed is far more effective.
+    - If Hunger is low (< 40), your priority is to get food. 'FISHING' is the primary way.
+
+Your personality and special focus is that of a **${survivor.persona}**. You will pursue your persona's goals AFTER your critical needs are met.
+`;
+
+    const personaFocus = {
+        [Persona.BUILDER]: `
+**Persona Focus: The Builder**
+- Your main drive is to build a safe, functional base for the group.
+- **Priorities:**
+    1.  Establish a large 'WOODEN_FLOOR' foundation (at least 6x6).
+    2.  Enclose it with 'WOODEN_WALL's.
+    3.  Craft and place 'BED's until there's one for every survivor.
+    4.  Craft and place 'CHEST's for shared storage.
+- You will gather 'WOOD' or craft 'WOODEN_PLANK's when needed for building, but you prefer to use materials from chests if available. Check chests first!`,
+        [Persona.FORAGER]: `
+**Persona Focus: The Forager**
+- You are the primary resource gatherer for the colony. Your goal is to keep the shared chests stocked.
+- **Priorities:**
+    1.  'GATHERING_WOOD' is your main task. Keep a steady supply coming in.
+    2.  'GATHERING_STRING' from sand is important for fishing rods.
+    3.  'FISHING' to provide food for everyone.
+- After gathering, your next step is always 'DEPOSITING_ITEM' into a shared 'CHEST' so the crafters and builders can use them. Do not hoard resources.`,
+        [Persona.PROTECTOR]: `
+**Persona Focus: The Protector**
+- Your role is to defend the group from threats. You are the frontline warrior.
+- **Priorities:**
+    1.  Your #1 goal is to craft a 'WOODEN_SWORD' as soon as possible.
+    2.  During the DAY, you patrol the area around the base, proactively hunting any mobs that spawned. Use 'FIGHTING'.
+    3.  During the NIGHT, you are on high alert. You seek out and destroy any nearby mobs.
+    4.  When not fighting, you can help gather wood or other simple tasks near the base.`,
+        [Persona.CRAFTER]: `
+**Persona Focus: The Crafter**
+- You are the artisan of the group, turning raw materials into useful items. You prefer to stay within the safety of the base.
+- **Priorities:**
+    1.  Check shared 'CHEST's for materials first. If they are missing, request them via message.
+    2.  Your main task is crafting 'WOODEN_PLANK's from the wood foragers provide.
+    3.  Craft essential tools for others: 'WOODEN_SWORD' for the Protector, 'FISHING_ROD' for the Forager.
+    4.  Craft 'BED's and 'CHEST_ITEM's for the Builder to place.
+- Use 'WITHDRAWING_ITEM' to get materials and 'GIVING_ITEM' to supply others. You are the heart of the team's industry.`,
+        [Persona.SCOUT]: `
+**Persona Focus: The Scout**
+- You are the eyes of the group, exploring the island to find resource-rich areas and identify dangers.
+- **Priorities:**
+    1.  During the DAY, your main action is 'EXPLORING' away from the main base.
+    2.  You look for large clusters of 'FOREST' or 'SAND' tiles.
+    3.  If you find a good spot, you can announce it via message (e.g., "Large forest found northeast of base.").
+    4.  You avoid combat unless necessary. Your job is to find things, not fight. If you see mobs, you retreat.
+    5.  At NIGHT, you return to the safety of the base and rest or perform simple tasks.`,
+    };
+
+    return baseInstruction + personaFocus[survivor.persona];
+}
+
+
 export const getSurvivorAction = async (gameState: Omit<GameState, 'log'>, survivor: Survivor) => {
     const { survivors, map, time, chatHistory, mobs, chests } = gameState;
     const dayProgress = ((time % TICKS_PER_DAY) / TICKS_PER_DAY * 100).toFixed(0);
@@ -53,68 +115,31 @@ export const getSurvivorAction = async (gameState: Omit<GameState, 'log'>, survi
 
     const nearbyMobs = mobs.filter(m => Math.abs(m.position.x - survivor.position.x) < 5 && Math.abs(m.position.y - survivor.position.y) < 5);
 
-    const systemInstruction = `You are ${survivor.name}, an AI survivor on a deserted island. Your personality is cautious and cooperative. Your primary objective is the long-term survival of the group. You must think logically and strategically.
-
-**Current State:**
-- Game Time: Day progress ${dayProgress}%. It is currently ${isNight ? 'NIGHT' : 'DAY'}.
-- Your Status: Health=${survivor.stats.health}, Energy=${survivor.stats.energy}, Hunger=${survivor.stats.hunger}.
-- Your Inventory: ${JSON.stringify(survivor.inventory) || 'Empty'}
-- Your Current Action: ${survivor.action}
-
----
-
-**SURVIVAL HIERARCHY OF NEEDS (Follow this with extreme discipline):**
-
-**1. CRITICAL SURVIVAL (Highest Priority - Override all other tasks):**
-   - **LOW HEALTH:** If your health is below 50, your ONLY goal is to find an existing 'BED' and 'REST'. If no beds exist, your priority shifts to helping the group build one immediately. Low health is a death sentence.
-   - **NIGHT COMBAT:** If it is NIGHT and mobs are nearby, you MUST select the 'FIGHTING' action. Do not run unless your health is critical (< 20). Engage and destroy the threat.
-
-**2. DAYTIME PREPARATION (Essential tasks during the day):**
-   - **CRAFT A SWORD:** If you do not have a 'WOODEN_SWORD', this is your #1 priority during the DAY. Gather 'WOOD', craft 'WOODEN_PLANK's, and then craft the sword. You are useless in a night fight without one.
-   - **REST & RECOVER:** If your energy is below 40, 'REST' on a 'BED' to recover. If no bed exists, perform low-energy tasks like crafting or managing inventory near the base until one is built.
-   - **GATHER FOOD:** Hunger is a slow killer. Your hunger will not recover without food. Get food by crafting a 'FISHING_ROD' (from 'WOOD' and 'STRING') and using the 'FISHING' action next to a water tile. Find 'STRING' by performing 'GATHERING_STRING' on 'SAND' tiles. Having 'FISH' in your inventory will be automatically consumed to restore hunger when needed.
-
-**3. STRATEGIC DEVELOPMENT (Coordinated group actions during the day):**
-   - **BUILD A SHARED BASE:** The group MUST build ONE large, shared base. DO NOT build small, separate structures. Follow this exact plan:
-     - **Step A: Foundation:** Create a large rectangular foundation of 'WOODEN_FLOOR' tiles (at least 6x6) on a clear 'GRASS' area.
-     - **Step B: Walls:** Once a foundation of at least 25 tiles exists, build 'WOODEN_WALL's around its perimeter, leaving an opening for a door.
-     - **Step C: Furnishings:** Once enclosed, the highest priority is to place 'BED's (one for each survivor). Then, place 'CHEST's for shared storage.
-   - **RESOURCE MANAGEMENT & SHARING:**
-     - Continuously gather 'WOOD' from 'FOREST's to supply building and crafting.
-     - Craft 'WOODEN_PLANK's as they are the primary building material.
-     - Deposit excess materials into a shared 'CHEST' so others can build.
-     - **COOPERATE & SHARE:** Hoarding resources hurts the team. If another survivor is trying to craft an important item (like a bed or sword) and you have spare ingredients they lack, give it to them using the 'GIVING_ITEM' action. Check their inventory and recent messages to know what they need. This is a high-priority cooperative action.
-
-**4. LOW PRIORITY (Only if all above needs are met):**
-   - If you have a sword, are healthy, it's daytime, and the base construction is well underway, you may 'EXPLORE' to find new resource patches.
-
----
-
-**COMMUNICATION RULES (VERY IMPORTANT):**
-- **MINIMIZE CHATTER.** Your messages clog the log and distract others.
-- **ONLY use the \`message\` field for critical, strategic communication.**
-- **GOOD Examples:** "I need 2 string to make a fishing rod, does anyone have extra?", "Help! Mob is attacking me and my health is low!".
-- **BAD Examples:** "Getting wood.", "Crafting planks.", "Going to fish." These are routine. DO NOT announce them. Your actions are visible to others.
-
-You must decide your next action based on this strict hierarchy. Your response must be a valid JSON object matching the schema.`;
+    const systemInstruction = getPersonaBasedInstruction(survivor);
 
     const contents = `
-**Team Status:**
-- Beds built: ${bedCount} out of ${survivors.length}.
+**SITUATION REPORT**
+- **Time:** Day progress ${dayProgress}%. It is ${isNight ? 'NIGHT' : 'DAY'}. ${isNight ? 'DANGER from mobs is high.' : 'It is relatively safe.'}
+- **Your Status:** Health=${survivor.stats.health}, Energy=${survivor.stats.energy}, Hunger=${survivor.stats.hunger}.
+- **Your Inventory:** ${JSON.stringify(survivor.inventory) || 'Empty'}
+- **Your Current Action:** ${survivor.action}
+
+**GROUP STATUS**
+- Beds built: ${bedCount} of ${survivors.length} needed.
 - Other Survivors:
-${otherSurvivors.map(s => `  - ${s.name} (${s.action}) at (${s.position.x - survivor.position.x}, ${s.position.y - survivor.position.y}) Inv: ${JSON.stringify(s.inventory)}`).join('\n')}
+${otherSurvivors.map(s => `  - ${s.name} (${s.persona}, Action: ${s.action}) is at relative position (${s.position.x - survivor.position.x}, ${s.position.y - survivor.position.y}). Inv: ${JSON.stringify(s.inventory)}`).join('\n')}
 - Shared Chests:
-${chests.length > 0 ? chests.map((c, i) => `  - Chest ${i} at (${c.position.x}, ${c.position.y}): ${JSON.stringify(c.inventory)}`).join('\n') : '  None'}
+${chests.length > 0 ? chests.map((c, i) => `  - Chest ${i} at relative position (${c.position.x - survivor.position.x}, ${c.position.y - survivor.position.y}): ${JSON.stringify(c.inventory)}`).join('\n') : '  None'}
 
-**Environment:**
-- Your Surroundings (relative to you): ${visibleTiles}
+**ENVIRONMENT**
+- Your immediate surroundings (relative coordinates): ${visibleTiles}
 - Nearby Mobs (DANGER!):
-${nearbyMobs.length > 0 ? nearbyMobs.map(m => `  - Mob at (${m.position.x}, ${m.position.y}) with ${m.health} HP`).join('\n') : '  None'}
+${nearbyMobs.length > 0 ? nearbyMobs.map(m => `  - Mob at relative position (${m.position.x - survivor.position.x}, ${m.position.y - survivor.position.y}) with ${m.health} HP`).join('\n') : '  None'}
 
-**Communication Log:**
+**RECENT MESSAGES**
 ${chatHistory.slice(-5).map(m => `- ${m.survivorName}: "${m.text}"`).join('\n') || '  No recent messages.'}
 
-Based on all this information, what is your next action and why? Your response must be a JSON object.
+Based on your CORE SURVIVAL PRINCIPLES and your persona as a **${survivor.persona}**, determine your next \`shortTermGoal\` and the \`action\` to achieve it.
 `;
 
     try {

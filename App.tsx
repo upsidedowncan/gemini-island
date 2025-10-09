@@ -3,7 +3,7 @@ import IslandGrid from './components/IslandGrid.tsx';
 import SurvivorStatusPanel from './components/SurvivorStatusPanel.tsx';
 import GameLog from './components/GameLog.tsx';
 import { generateMap } from './utils/mapGenerator.ts';
-import { TileType, Survivor, LogEntry, ChatMessage, Item, Inventory, Mob, Chest } from './types.ts';
+import { TileType, Survivor, LogEntry, ChatMessage, Item, Inventory, Mob, Chest, Persona } from './types.ts';
 import { GRID_SIZE, MAX_STAT, TICK_RATE, TICKS_PER_DAY, TREE_REGROWTH_CHANCE, CRAFTING_DURATION_TICKS, MOB_SPAWN_CHANCE_NIGHT, MOB_HEALTH, MOB_ATTACK_DAMAGE, SURVIVOR_BASE_ATTACK_DAMAGE, SWORD_ATTACK_DAMAGE, STRING_FIND_CHANCE, FISH_CATCH_CHANCE } from './constants.ts';
 import { getSurvivorAction } from './services/geminiService.ts';
 import { findRecipeByName } from './recipes.ts';
@@ -47,6 +47,7 @@ const App: React.FC = () => {
     const initialSurvivors: Survivor[] = Array.from({ length: 5 }, (_, i) => ({
       id: `survivor-${i}`,
       name: ['Alice', 'Bob', 'Charlie', 'Dana', 'Eve'][i],
+      persona: [Persona.BUILDER, Persona.FORAGER, Persona.PROTECTOR, Persona.CRAFTER, Persona.SCOUT][i],
       stats: { health: 100, hunger: 100, energy: 100 },
       inventory: {},
       action: 'IDLE',
@@ -571,14 +572,14 @@ const App: React.FC = () => {
             const gameState = { survivors, map, time, chatHistory, mobs, chests };
             getSurvivorAction(gameState, survivor).then(newActionData => {
                 if (newActionData) {
-                    const { action, reasoning, message, craftingRecipeName, itemToPlace, depositItem, withdrawItem, giveItem, targetSurvivorName } = newActionData;
+                    const { action, reasoning, message, craftingRecipeName, itemToPlace, depositItem, withdrawItem, giveItem, targetSurvivorName, shortTermGoal } = newActionData;
                     
                     setSurvivors(prev => prev.map(s => {
                         if (s.id === survivor.id) {
                             let newSurvivorState: Survivor = { ...s, action: action, lastDecisionTick: gameTickRef.current };
                             newSurvivorState.actionTargetItem = itemToPlace || depositItem || withdrawItem || giveItem;
                             
-                            addLogEntry(`${s.name} decided to ${action.toLowerCase().replace(/_/g, ' ')}. Reason: ${reasoning}`);
+                            addLogEntry(`${s.name}'s goal is to ${shortTermGoal}. Decided to ${action.toLowerCase().replace(/_/g, ' ')}. Reason: ${reasoning}`);
                             
                             if (message) {
                                 newSurvivorState.currentMessage = { text: message, displayTicks: 20 }; // show for 10s

@@ -1,5 +1,3 @@
-import { string } from "@google/genai/dist/protos/protos";
-
 export enum TileType {
   WATER = 'WATER',
   SAND = 'SAND',
@@ -22,6 +20,14 @@ export enum Item {
     FISH = 'FISH',
 }
 
+export enum Persona {
+    BUILDER = 'BUILDER',
+    FORAGER = 'FORAGER',
+    PROTECTOR = 'PROTECTOR',
+    CRAFTER = 'CRAFTER',
+    SCOUT = 'SCOUT',
+}
+
 export type Inventory = Partial<Record<Item, number>>;
 
 export type ActionType = 'IDLE' | 'GATHERING_WOOD' | 'BUILDING_FLOOR' | 'BUILDING_WALL' | 'PLACING_ITEM' | 'CRAFTING' | 'EXPLORING' | 'RESTING' | 'FIGHTING' | 'DEPOSITING_ITEM' | 'WITHDRAWING_ITEM' | 'GIVING_ITEM' | 'FISHING' | 'GATHERING_STRING';
@@ -29,6 +35,7 @@ export type ActionType = 'IDLE' | 'GATHERING_WOOD' | 'BUILDING_FLOOR' | 'BUILDIN
 export interface Survivor {
   id: string;
   name: string;
+  persona: Persona;
   stats: {
     health: number;
     hunger: number;
